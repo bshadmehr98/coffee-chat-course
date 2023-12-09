@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Page</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+        }
+        
+        #chat-container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #sidebar {
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        #sidebar h2 {
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        
+        #user-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        #user-list li {
+            padding: 10px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        #user-list li:hover {
+            background-color: #555;
+        }
+        
+        #chat-window {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #chat-header {
+            background-color: #4CAF50;
+            color: #fff;
+            padding: 15px;
+            font-size: 20px;
+        }
+        
+        #chat-messages {
+            flex: 1;
+            overflow-y: scroll;
+            padding: 15px;
+            background-color: #fff;
+        }
+        
+        .message {
+            background-color: #f2f2f2;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        
+        #chat-input {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background-color: #eee;
+        }
+        
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        #send-btn {
+            padding: 10px 15px;
+            background-color: #4CAF50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        #send-btn:hover {
+            background-color: #45a049;
+        }
+        
+    </style>
+</head>
+<body>
+
+    <div id="chat-container">
+        <div id="sidebar">
+            <h2>Users</h2>
+            <ul id="user-list">
+                {% for chat in chats %}
+                <li style="background-color: {% if chat.expert_assigned %}#45a049{% else %}#99203c{% endif %};">{{ chat.token }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div id="chat-window">
+            <div id="chat-header">Chat with <span id="current-user">User</span></div>
+            <div id="chat-messages">
+                {% for message in messages %}
+                <div class="message"><strong>{% if message.from_user %}User{% else %}Admin{% endif %}:</strong> {{ message.text }}</div>
+                {% endfor %}
+            </div>
+            <div id="chat-input">
+                <input type="text" id="user-input" placeholder="Type your message...">
+                <button id="send-btn">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            function displayMessage({ user, message }) {
+                const messageDiv = document.createElement("div");
+                messageDiv.className = "message";
+                messageDiv.innerHTML = `<strong>${user}:</strong> ${message}`;
+                chatMessages.appendChild(messageDiv);
+            }
+
+            {% if token %}
+                const socket = setupWebSocket("{{ token }}");
+            {% endif %}
+        
+            const chatMessages = document.getElementById("chat-messages");
+            const currentUserSpan = document.getElementById("current-user");
+            const userInput = document.getElementById("user-input");
+            const sendBtn = document.getElementById("send-btn");
+        
+            sendBtn.addEventListener("click", () => {
+                const messageText = userInput.value.trim();
+                if (messageText !== "") {
+                    const currentUser = currentUserSpan.textContent;
+                    const newMessage = { user: "Admin", message: messageText };
+                    userInput.value = "";
+                    displayMessage(newMessage)
+                    socket.send(messageText)
+                }
+            });
+        
+            
+        });
+
+        function setupWebSocket(token) {
+            const socket = new WebSocket(`ws://127.0.0.1:8000/admin/chat/start/${token}`);
+        
+            socket.onopen = () => {
+                socket.onmessage = ({ data }) => {
+                    const chatMessages = document.getElementById("chat-messages");
+                    const messageDiv = document.createElement("div");
+                    messageDiv.className = "message";
+                    messageDiv.innerHTML = `<strong>User:</strong> ${data}`;
+                    chatMessages.appendChild(messageDiv);
+                };
+            };
+        
+            socket.onerror = error => {
+                console.error('WebSocket error:', error);
+            };
+        
+            return socket;
+        }
+    </script>
+</body>
+</html>
